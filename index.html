@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>食材バーコード</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="食材バーコード">
+<meta name="theme-color" content="#2f7d4f">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<style>
+  :root {
+    --bg: #f4f6f3;
+    --card: #ffffff;
+    --text: #1d2420;
+    --sub: #5f6b64;
+    --line: #dde3df;
+    --main: #2f7d4f;
+    --main-dark: #23613c;
+    --warn: #b3541e;
+    --warn-bg: #fff3ea;
+    --ok-bg: #eaf6ee;
+    --danger: #c0392b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141816;
+      --card: #1f2522;
+      --text: #e8ece9;
+      --sub: #a3aea7;
+      --line: #333c37;
+      --main: #3f9b63;
+      --main-dark: #2f7d4f;
+      --warn: #f0a070;
+      --warn-bg: #3a2a20;
+      --ok-bg: #1f3428;
+      --danger: #e5675a;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    padding: env(safe-area-inset-top) 0 calc(150px + env(safe-area-inset-bottom));
+  }
+  header {
+    padding: 14px 16px 6px;
+  }
+  header h1 { margin: 0; font-size: 20px; }
+  header p { margin: 2px 0 0; font-size: 13px; color: var(--sub); }
+  main { padding: 0 16px; max-width: 560px; margin: 0 auto; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+    margin: 12px 0;
+  }
+  .card h2 { margin: 0 0 10px; font-size: 17px; }
+  button {
+    font: inherit;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn {
+    display: block;
+    width: 100%;
+    min-height: 56px;
+    padding: 12px 16px;
+    font-size: 18px;
+    font-weight: 700;
+    background: var(--main);
+    color: #fff;
+  }
+  .btn:active { background: var(--main-dark); }
+  .btn.sub {
+    background: transparent;
+    color: var(--main);
+    border: 2px solid var(--main);
+    font-size: 16px;
+    min-height: 50px;
+  }
+  .btn.danger {
+    background: transparent;
+    color: var(--danger);
+    border: 2px solid var(--danger);
+    font-size: 16px;
+    min-height: 50px;
+  }
+  .btn + .btn { margin-top: 10px; }
+  .row { display: flex; gap: 8px; align-items: stretch; }
+  .row > * { min-width: 0; }
+  input[type=text], input[type=number], input[type=tel], input:not([type]) {
+    font: inherit;
+    font-size: 18px;
+    width: 100%;
+    min-height: 52px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--text);
+  }
+  label { display: block; font-size: 14px; color: var(--sub); margin: 10px 0 4px; }
+  .search-btn { width: 96px; flex: none; min-height: 52px; font-size: 17px; font-weight: 700; background: var(--main); color: #fff; }
+  #reader {
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #000;
+    margin-bottom: 10px;
+  }
+  #reader video { width: 100% !important; display: block; }
+  .hint { font-size: 13px; color: var(--sub); margin: 8px 0 0; }
+  .status {
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    white-space: pre-line;
+  }
+  .status.ok { background: var(--ok-bg); color: var(--main); }
+  .status.ng { background: var(--warn-bg); color: var(--warn); }
+  .status.wait { background: var(--bg); color: var(--sub); }
+  .info { font-size: 15px; margin: 4px 0; }
+  .info b { color: var(--sub); font-weight: 600; margin-right: 4px; }
+  .jan { font-family: ui-monospace, Menlo, monospace; font-size: 15px; color: var(--sub); }
+  .stepper { display: flex; align-items: center; gap: 6px; }
+  .stepper button {
+    width: 52px; height: 52px; flex: none;
+    font-size: 26px; font-weight: 700;
+    background: var(--bg); color: var(--text); border: 1px solid var(--line);
+  }
+  .stepper input { text-align: center; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  details { margin-top: 10px; }
+  summary { cursor: pointer; color: var(--main); font-weight: 600; padding: 6px 0; }
+  .grid4 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .grid4 input { font-size: 16px; min-height: 46px; }
+  .item {
+    border-top: 1px solid var(--line);
+    padding: 12px 0;
+  }
+  .item:first-of-type { border-top: none; padding-top: 0; }
+  .item .name { font-weight: 700; font-size: 16px; word-break: break-all; }
+  .item .meta { font-size: 13px; color: var(--sub); word-break: break-all; }
+  .item .controls { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+  .item .controls .stepper button { width: 44px; height: 44px; font-size: 22px; }
+  .item .controls .stepper input { width: 52px; min-height: 44px; font-size: 16px; padding: 4px; }
+  .item .controls .price { flex: 1; min-height: 44px; font-size: 16px; }
+  .item .del {
+    width: 44px; height: 44px; flex: none;
+    background: transparent; color: var(--danger); border: 1px solid var(--line); font-size: 20px;
+  }
+  .empty { color: var(--sub); text-align: center; padding: 12px 0; }
+  .total { text-align: right; font-weight: 700; margin-top: 6px; }
+  textarea {
+    width: 100%;
+    min-height: 120px;
+    font: 13px/1.5 ui-monospace, Menlo, monospace;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .bottom {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    background: var(--card);
+    border-top: 1px solid var(--line);
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    z-index: 10;
+  }
+  .bottom .inner { max-width: 560px; margin: 0 auto; }
+  .bottom .count { font-size: 13px; color: var(--sub); text-align: center; margin-bottom: 6px; }
+  .hist-item {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    border-top: 1px solid var(--line); padding: 8px 0;
+  }
+  .hist-item:first-child { border-top: none; }
+  .hist-item span { font-size: 14px; word-break: break-all; }
+  .hist-item button { flex: none; padding: 8px 12px; background: var(--ok-bg); color: var(--main); font-weight: 700; }
+  .toast {
+    position: fixed; left: 50%; top: calc(16px + env(safe-area-inset-top));
+    transform: translateX(-50%);
+    background: #222; color: #fff; padding: 10px 18px; border-radius: 999px;
+    font-size: 15px; z-index: 50; opacity: 0; transition: opacity .2s; pointer-events: none;
+    max-width: calc(100% - 32px); text-align: center;
+  }
+  .toast.show { opacity: .95; }
+  .hidden { display: none !important; }
+  .small { font-size: 13px; color: var(--sub); }
+  a { color: var(--main); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🥦 食材バーコード</h1>
+  <p>読み取る → リストに追加 → AI用テキストをコピー</p>
+</header>
+
+<main>
+  <!-- 読み取り -->
+  <section class="card" id="scanCard">
+    <div id="reader" class="hidden"></div>
+    <button class="btn" id="startBtn">📷 バーコードを読み取る</button>
+    <button class="btn sub hidden" id="stopBtn">カメラを止める</button>
+    <p class="hint" id="scanHint">バーコードを横長の枠に合わせ、15〜20cmほど離してください。</p>
+
+    <label for="janInput">読み取れないときは数字を入力（8桁 または 13桁）</label>
+    <div class="row">
+      <input id="janInput" type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="13" placeholder="4901234567890" autocomplete="off">
+      <button class="search-btn" id="searchBtn">検索</button>
+    </div>
+    <button class="btn sub" id="noJanBtn" style="margin-top:10px">バーコードなしで追加</button>
+  </section>
+
+  <!-- 検索結果 -->
+  <section class="card hidden" id="resultCard">
+    <h2>商品</h2>
+    <div class="status wait" id="resultStatus">検索中…</div>
+    <div class="jan" id="resultJan"></div>
+
+    <label for="nameInput" id="nameLabel">商品名</label>
+    <input id="nameInput" type="text" placeholder="例：木綿豆腐" autocomplete="off">
+    <div id="resultInfo"></div>
+
+    <div class="grid2">
+      <div>
+        <label>個数</label>
+        <div class="stepper">
+          <button type="button" id="qtyMinus">−</button>
+          <input id="qtyInput" type="number" inputmode="numeric" min="1" value="1">
+          <button type="button" id="qtyPlus">＋</button>
+        </div>
+      </div>
+      <div>
+        <label for="priceInput">値段（1個・任意）</label>
+        <input id="priceInput" type="number" inputmode="numeric" min="0" placeholder="円">
+      </div>
+    </div>
+
+    <details id="nutriDetails">
+      <summary>栄養を手で入力する（任意）</summary>
+      <label for="nBasis">基準（例：1パック、100g）</label>
+      <input id="nBasis" type="text" placeholder="1パック">
+      <div class="grid4" style="margin-top:8px">
+        <input id="nKcal" type="number" inputmode="decimal" placeholder="kcal">
+        <input id="nP" type="number" inputmode="decimal" placeholder="たんぱく質 g">
+        <input id="nF" type="number" inputmode="decimal" placeholder="脂質 g">
+        <input id="nC" type="number" inputmode="decimal" placeholder="炭水化物 g">
+      </div>
+      <p class="small">空のままなら「栄養：なし」になり、AIが別に調べます。</p>
+    </details>
+
+    <div style="margin-top:14px">
+      <button class="btn" id="addBtn">リストに追加</button>
+      <button class="btn sub" id="cancelBtn">やめる</button>
+    </div>
+  </section>
+
+  <!-- 買い物リスト -->
+  <section class="card" id="cartCard">
+    <h2>今回の買い物リスト</h2>
+    <div id="cartList"></div>
+    <div class="total" id="cartTotal"></div>
+  </section>
+
+  <section class="card">
+    <h2>AIに送るテキスト</h2>
+    <textarea id="preview" readonly></textarea>
+    <p class="small">コピーできないときは、上の文字を長押しして「すべてを選択」→「コピー」してください。</p>
+    <button class="btn danger" id="clearBtn" style="margin-top:10px">リストを空にする</button>
+  </section>
+
+  <!-- 履歴 -->
+  <section class="card">
+    <details>
+      <summary>読み取った商品の履歴（<span id="histCount">0</span>件）</summary>
+      <div id="histList" style="margin-top:8px"></div>
+      <button class="btn danger" id="histClearBtn" style="margin-top:10px">履歴をすべて消す</button>
+    </details>
+  </section>
+
+  <!-- 設定 -->
+  <section class="card">
+    <details>
+      <summary>設定：楽天APIで商品名を探す（任意）</summary>
+      <p class="small">Open Food Factsで見つからない日本の商品を、楽天市場の商品名から探します。楽天ウェブサービスで無料登録した「アプリID」と「アクセスキー」を入れてください。空のままなら使いません。</p>
+      <label for="rakutenId">アプリID（applicationId）</label>
+      <input id="rakutenId" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <label for="rakutenKey">アクセスキー（accessKey）</label>
+      <input id="rakutenKey" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button class="btn sub" id="saveSettingsBtn" style="margin-top:10px">保存</button>
+    </details>
+  </section>
+  <p class="small" style="text-align:center">商品データ：<a href="https://jp.openfoodfacts.org/" target="_blank" rel="noopener">Open Food Facts</a>（ODbL）</p>
+</main>
+
+<div class="bottom">
+  <div class="inner">
+    <div class="count" id="bottomCount">リストは空です</div>
+    <button class="btn" id="copyBtn">📋 AIに送るテキストをコピー</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+(() => {
+  'use strict';
+
+  // ---------- 保存（localStorage） ----------
+  const KEY_CART = 'fb_cart_v1';
+  const KEY_PRODUCTS = 'fb_products_v1';
+  const KEY_SETTINGS = 'fb_settings_v1';
+
+  function load(key, fallback) {
+    try {
+      const v = localStorage.getItem(key);
+      return v ? JSON.parse(v) : fallback;
+    } catch (e) { return fallback; }
+  }
+  function save(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* 保存できない環境 */ }
+  }
+
+  let cart = load(KEY_CART, []);          // [{id, jan, name, source, maker, quantity, nutrition, qty, price}]
+  let products = load(KEY_PRODUCTS, {});  // { jan: {name, source, maker, quantity, nutrition, lastPrice, updated} }
+  let settings = load(KEY_SETTINGS, { rakutenId: '', rakutenKey: '' });
+
+  // ---------- 便利関数 ----------
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  // JANコードのチェックディジット確認（読み間違い防止）
+  function isValidJan(code) {
+    if (!/^(\d{8}|\d{13})$/.test(code)) return false;
+    const digits = code.split('').map(Number);
+    const check = digits.pop();
+    let sum = 0;
+    digits.reverse().forEach((d, i) => { sum += d * (i % 2 === 0 ? 3 : 1); });
+    return (10 - (sum % 10)) % 10 === check;
+  }
+
+  function round1(n) {
+    if (n === null || n === undefined || n === '' || isNaN(Number(n))) return null;
+    return Math.round(Number(n) * 10) / 10;
+  }
+
+  function nutritionText(n) {
+    if (!n || n.kcal === null || n.kcal === undefined) return null;
+    const parts = [`${round1(n.kcal)}kcal`];
+    if (n.p !== null && n.p !== undefined) parts.push(`P${round1(n.p)}`);
+    if (n.f !== null && n.f !== undefined) parts.push(`F${round1(n.f)}`);
+    if (n.c !== null && n.c !== undefined) parts.push(`C${round1(n.c)}`);
+    return { basis: n.basis || '100g', text: parts.join(' ') };
+  }
+
+  // ---------- 商品検索 ----------
+  async function fetchOpenFoodFacts(jan) {
+    const fields = 'product_name,product_name_ja,generic_name_ja,brands,quantity,serving_size,nutriments';
+    const url = `https://world.openfoodfacts.org/api/v2/product/${jan}.json?fields=${fields}`;
+    const res = await fetch(url);
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error('OFF ' + res.status);
+    const data = await res.json();
+    if (data.status !== 1 || !data.product) return null;
+    const p = data.product;
+    const name = (p.product_name_ja || p.product_name || p.generic_name_ja || '').trim();
+    const nm = p.nutriments || {};
+
+    const pick = (suffix) => {
+      const kcal = nm['energy-kcal' + suffix] ?? (nm['energy' + suffix] != null && nm['energy_unit'] === 'kJ' ? nm['energy' + suffix] / 4.184 : undefined);
+      if (kcal === undefined || kcal === null || kcal === '') return null;
+      return {
+        kcal: Number(kcal),
+        p: nm['proteins' + suffix] ?? null,
+        f: nm['fat' + suffix] ?? null,
+        c: nm['carbohydrates' + suffix] ?? null,
+      };
+    };
+    let nutrition = null;
+    const perServing = pick('_serving');
+    const per100 = pick('_100g');
+    if (perServing) nutrition = { ...perServing, basis: p.serving_size ? `1食 ${p.serving_size}` : '1食' };
+    else if (per100) nutrition = { ...per100, basis: '100gあたり' };
+
+    if (!name && !nutrition) return null;
+    return {
+      name,
+      maker: (p.brands || '').split(',')[0].trim(),
+      quantity: (p.quantity || '').trim(),
+      nutrition,
+      source: 'off',
+    };
+  }
+
+  async function fetchRakuten(jan) {
+    if (!settings.rakutenId || !settings.rakutenKey) return null;
+    const params = new URLSearchParams({
+      format: 'json',
+      formatVersion: '2',
+      applicationId: settings.rakutenId,
+      accessKey: settings.rakutenKey,
+      keyword: jan,
+      hits: '3',
+    });
+    const res = await fetch('https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20220601?' + params);
+    if (!res.ok) {
+      let msg = String(res.status);
+      try { const j = await res.json(); msg = j.error_description || j.errors?.errorMessage || msg; } catch (e) {}
+      throw new Error('楽天API: ' + msg);
+    }
+    const data = await res.json();
+    const items = data.Items || data.items || [];
+    if (!items.length) return null;
+    const item = items[0].Item || items[0];
+    let name = String(item.itemName || '')
+      .replace(/【[^】]*】/g, ' ')
+      .replace(/\[[^\]]*\]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (name.length > 50) name = name.slice(0, 50) + '…';
+    if (!name) return null;
+    return { name, maker: '', quantity: '', nutrition: null, source: 'rakuten' };
+  }
+
+  // ---------- 検索結果カード ----------
+  let current = null; // 今表示している商品
+
+  function openResult(jan) {
+    $('resultCard').classList.remove('hidden');
+    $('resultJan').textContent = jan ? `JAN：${jan}` : 'JANコードなし';
+    $('nameInput').value = '';
+    $('resultInfo').innerHTML = '';
+    $('qtyInput').value = 1;
+    $('priceInput').value = '';
+    ['nBasis', 'nKcal', 'nP', 'nF', 'nC'].forEach((id) => { $(id).value = ''; });
+    $('nutriDetails').open = false;
+    $('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function setStatus(kind, text) {
+    const s = $('resultStatus');
+    s.className = 'status ' + kind;
+    s.textContent = text;
+  }
+
+  function showProduct(p) {
+    $('nameInput').value = p.name || '';
+    const rows = [];
+    if (p.maker) rows.push(`<div class="info"><b>メーカー</b>${esc(p.maker)}</div>`);
+    if (p.quantity) rows.push(`<div class="info"><b>内容量</b>${esc(p.quantity)}</div>`);
+    const nt = nutritionText(p.nutrition);
+    rows.push(`<div class="info"><b>栄養</b>${nt ? esc(`（${nt.basis}）${nt.text}`) : 'なし（AIが調べます）'}</div>`);
+    $('resultInfo').innerHTML = rows.join('');
+    if (p.lastPrice) $('priceInput').value = p.lastPrice;
+    if (p.nutrition && p.source === 'manual') {
+      $('nBasis').value = p.nutrition.basis || '';
+      $('nKcal').value = p.nutrition.kcal ?? '';
+      $('nP').value = p.nutrition.p ?? '';
+      $('nF').value = p.nutrition.f ?? '';
+      $('nC').value = p.nutrition.c ?? '';
+    }
+  }
+
+  async function lookup(jan) {
+    openResult(jan);
+    current = { jan, name: '', source: 'manual', maker: '', quantity: '', nutrition: null };
+
+    // 1. 履歴にあればそれを使う
+    if (products[jan]) {
+      current = { jan, ...products[jan] };
+      setStatus('ok', '✅ 履歴から表示しました');
+      showProduct(current);
+      return;
+    }
+
+    // 2. Open Food Facts
+    setStatus('wait', '🔎 Open Food Factsで検索中…');
+    let found = null;
+    let errorMsg = '';
+    try {
+      found = await fetchOpenFoodFacts(jan);
+    } catch (e) {
+      errorMsg = '通信エラー（電波を確認してください）';
+    }
+    if (current.jan !== jan) return; // 途中で別の商品に切り替わった
+
+    // 3. 楽天（設定してあるときだけ）
+    if (!found && settings.rakutenId && settings.rakutenKey) {
+      setStatus('wait', '🔎 楽天市場で商品名を検索中…');
+      try {
+        found = await fetchRakuten(jan);
+      } catch (e) {
+        errorMsg = e.message;
+      }
+      if (current.jan !== jan) return;
+    }
+
+    if (found) {
+      current = { jan, ...found };
+      if (found.source === 'off') {
+        setStatus('ok', found.name ? '✅ 見つかりました（Open Food Facts）' : '✅ 栄養は見つかりました。商品名を入力してください');
+      } else {
+        setStatus('ok', '✅ 楽天市場で見つかりました。商品名を確認・修正してください（栄養はなし）');
+      }
+      showProduct(current);
+      if (!found.name) $('nameInput').focus();
+    } else {
+      setStatus('ng', '⚠️ 見つかりませんでした。商品名を入力してください' + (errorMsg ? `\n（${errorMsg}）` : ''));
+      showProduct(current);
+      $('nameInput').focus();
+    }
+  }
+
+  function readManualNutrition() {
+    const kcal = $('nKcal').value.trim();
+    if (kcal === '') return null;
+    const num = (id) => ($(id).value.trim() === '' ? null : Number($(id).value));
+    return {
+      basis: $('nBasis').value.trim() || '1個',
+      kcal: Number(kcal),
+      p: num('nP'), f: num('nF'), c: num('nC'),
+    };
+  }
+
+  function addCurrent() {
+    if (!current) return;
+    const name = $('nameInput').value.trim();
+    if (!name) {
+      toast('商品名を入力してください');
+      $('nameInput').focus();
+      return;
+    }
+    const qty = Math.max(1, parseInt($('qtyInput').value, 10) || 1);
+    const priceRaw = $('priceInput').value.trim();
+    const price = priceRaw === '' ? null : Math.max(0, Math.round(Number(priceRaw)));
+
+    let source = current.source;
+    let nutrition = current.nutrition;
+    const manualN = readManualNutrition();
+    if (manualN) nutrition = manualN;
+    // 栄養だけ見つかって商品名は手入力した場合
+    if (!current.name && source !== 'manual') source = 'manual-name';
+
+    const product = {
+      name, source,
+      maker: current.maker || '',
+      quantity: current.quantity || '',
+      nutrition,
+      lastPrice: price ?? current.lastPrice ?? null,
+      updated: Date.now(),
+    };
+
+    // 履歴に保存（JANがあるときだけ）
+    if (current.jan) {
+      products[current.jan] = product;
+      save(KEY_PRODUCTS, products);
+    }
+
+    // 同じJANがリストにあれば個数を足す
+    const existing = current.jan ? cart.find((c) => c.jan === current.jan) : null;
+    if (existing) {
+      existing.qty += qty;
+      if (price !== null) existing.price = price;
+      Object.assign(existing, { name, source, maker: product.maker, quantity: product.quantity, nutrition });
+      toast(`「${name}」の個数を${existing.qty}にしました`);
+    } else {
+      cart.push({
+        id: Date.now() + Math.random().toString(36).slice(2, 6),
+        jan: current.jan || '',
+        name, source,
+        maker: product.maker,
+        quantity: product.quantity,
+        nutrition,
+        qty, price,
+      });
+      toast(`「${name}」を追加しました`);
+    }
+    save(KEY_CART, cart);
+    closeResult();
+    renderCart();
+    renderHistory();
+  }
+
+  function closeResult() {
+    current = null;
+    $('resultCard').classList.add('hidden');
+    $('janInput').value = '';
+  }
+
+  // ---------- 買い物リスト ----------
+  function today() {
+    const d = new Date();
+    return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  function lineFor(item) {
+    const parts = [];
+    parts.push(item.jan || 'JANなし');
+    if (item.source === 'manual' || item.source === 'manual-name') {
+      parts.push(`商品名不明（手入力：${item.name}）`);
+    } else {
+      parts.push(item.name);
+    }
+    if (item.maker) parts.push(`メーカー：${item.maker}`);
+    if (item.quantity) parts.push(`内容量：${item.quantity}`);
+    parts.push(`数量：${item.qty}`);
+    parts.push(`価格：${item.price === null || item.price === undefined ? '未入力' : item.price + '円'}`);
+    const nt = nutritionText(item.nutrition);
+    parts.push(nt ? `栄養（${nt.basis}）：${nt.text}` : '栄養：なし');
+    return '- ' + parts.join('｜');
+  }
+
+  function buildText() {
+    if (!cart.length) return '';
+    return `【買い物 ${today()}】\n` + cart.map(lineFor).join('\n');
+  }
+
+  function renderCart() {
+    const list = $('cartList');
+    if (!cart.length) {
+      list.innerHTML = '<div class="empty">まだ何もありません。<br>バーコードを読み取ってください。</div>';
+    } else {
+      list.innerHTML = cart.map((item) => {
+        const nt = nutritionText(item.nutrition);
+        const meta = [
+          item.jan || 'JANなし',
+          item.maker,
+          item.quantity,
+          nt ? `${nt.basis} ${nt.text}` : '栄養なし',
+        ].filter(Boolean).join(' / ');
+        return `
+          <div class="item" data-id="${esc(item.id)}">
+            <div class="name">${esc(item.name)}</div>
+            <div class="meta">${esc(meta)}</div>
+            <div class="controls">
+              <div class="stepper">
+                <button type="button" data-act="minus" aria-label="減らす">−</button>
+                <input type="number" inputmode="numeric" min="1" value="${item.qty}" data-act="qty" aria-label="個数">
+                <button type="button" data-act="plus" aria-label="増やす">＋</button>
+              </div>
+              <input class="price" type="number" inputmode="numeric" min="0" placeholder="値段（円）" value="${item.price ?? ''}" data-act="price" aria-label="値段">
+              <button type="button" class="del" data-act="del" aria-label="削除">🗑</button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+    const priced = cart.filter((c) => c.price !== null && c.price !== undefined);
+    const total = priced.reduce((s, c) => s + c.price * c.qty, 0);
+    $('cartTotal').textContent = priced.length ? `合計 ${total.toLocaleString()}円${priced.length < cart.length ? '（値段未入力あり）' : ''}` : '';
+    const count = cart.reduce((s, c) => s + c.qty, 0);
+    $('bottomCount').textContent = cart.length ? `${cart.length}品目・${count}個` : 'リストは空です';
+    $('preview').value = buildText();
+  }
+
+  function updateItem(id, fn) {
+    const item = cart.find((c) => c.id === id);
+    if (!item) return;
+    fn(item);
+    save(KEY_CART, cart);
+  }
+
+  $('cartList').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    const id = btn.closest('.item').dataset.id;
+    const act = btn.dataset.act;
+    if (act === 'plus') updateItem(id, (it) => { it.qty += 1; });
+    if (act === 'minus') updateItem(id, (it) => { it.qty = Math.max(1, it.qty - 1); });
+    if (act === 'del') {
+      const item = cart.find((c) => c.id === id);
+      if (item && confirm(`「${item.name}」をリストから消しますか？`)) {
+        cart = cart.filter((c) => c.id !== id);
+        save(KEY_CART, cart);
+      }
+    }
+    renderCart();
+  });
+
+  $('cartList').addEventListener('change', (e) => {
+    const input = e.target.closest('input[data-act]');
+    if (!input) return;
+    const id = input.closest('.item').dataset.id;
+    if (input.dataset.act === 'qty') {
+      updateItem(id, (it) => { it.qty = Math.max(1, parseInt(input.value, 10) || 1); });
+    }
+    if (input.dataset.act === 'price') {
+      updateItem(id, (it) => {
+        it.price = input.value.trim() === '' ? null : Math.max(0, Math.round(Number(input.value)));
+        if (it.jan && products[it.jan] && it.price !== null) {
+          products[it.jan].lastPrice = it.price;
+          save(KEY_PRODUCTS, products);
+        }
+      });
+    }
+    renderCart();
+  });
+
+  // ---------- コピー ----------
+  async function copyText() {
+    const text = buildText();
+    if (!text) { toast('リストが空です'); return; }
+    let ok = false;
+    try {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    } catch (e) {
+      const ta = $('preview');
+      ta.removeAttribute('readonly');
+      ta.focus();
+      ta.setSelectionRange(0, ta.value.length);
+      try { ok = document.execCommand('copy'); } catch (e2) { ok = false; }
+      ta.setAttribute('readonly', '');
+    }
+    toast(ok ? '📋 コピーしました！チャットに貼り付けてください' : 'コピーできませんでした。下のテキストを長押ししてコピーしてください');
+  }
+
+  // ---------- 履歴 ----------
+  function renderHistory() {
+    const entries = Object.entries(products).sort((a, b) => (b[1].updated || 0) - (a[1].updated || 0));
+    $('histCount').textContent = entries.length;
+    $('histList').innerHTML = entries.length
+      ? entries.map(([jan, p]) => `
+          <div class="hist-item">
+            <span>${esc(p.name)}<br><span class="small">${esc(jan)}</span></span>
+            <button type="button" data-jan="${esc(jan)}">追加</button>
+          </div>`).join('')
+      : '<div class="empty">履歴はまだありません</div>';
+  }
+  $('histList').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-jan]');
+    if (btn) lookup(btn.dataset.jan);
+  });
+
+  // ---------- カメラ ----------
+  let scanner = null;
+  let scanning = false;
+  let lastCode = '';
+  let lastCount = 0;
+
+  async function startScan() {
+    if (typeof Html5Qrcode === 'undefined') {
+      toast('読み取り機能を読み込めませんでした。電波を確認して再読み込みしてください');
+      return;
+    }
+    if (!window.isSecureContext) {
+      toast('カメラはhttps://のページでしか使えません');
+      return;
+    }
+    closeResult();
+    $('reader').classList.remove('hidden');
+    $('startBtn').classList.add('hidden');
+    $('stopBtn').classList.remove('hidden');
+    lastCode = ''; lastCount = 0;
+
+    if (!scanner) {
+      scanner = new Html5Qrcode('reader', {
+        formatsToSupport: [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8],
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+        verbose: false,
+      });
+    }
+    try {
+      await scanner.start(
+        { facingMode: 'environment' },
+        {
+          fps: 15,
+          qrbox: (w, h) => {
+            const width = Math.floor(Math.min(w * 0.9, 400));
+            return { width, height: Math.floor(Math.min(h * 0.45, width * 0.5)) };
+          },
+          aspectRatio: 1.333,
+          videoConstraints: {
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            focusMode: 'continuous',
+          },
+        },
+        onScan,
+        () => {}
+      );
+      scanning = true;
+    } catch (err) {
+      stopScanUI();
+      const msg = String(err && (err.name || err.message || err));
+      if (/NotAllowed|Permission/i.test(msg)) {
+        toast('カメラが許可されていません。設定 → Chrome → カメラ をオンにしてください');
+      } else {
+        toast('カメラを起動できませんでした：' + msg);
+      }
+    }
+  }
+
+  function onScan(text) {
+    const code = String(text).trim();
+    if (!isValidJan(code)) return;
+    // 同じ数字が2回続けて読めたら確定（読み間違い防止）
+    if (code === lastCode) lastCount += 1; else { lastCode = code; lastCount = 1; }
+    if (lastCount < 2) return;
+    if (navigator.vibrate) navigator.vibrate(80);
+    stopScan().then(() => lookup(code));
+  }
+
+  function stopScanUI() {
+    $('reader').classList.add('hidden');
+    $('startBtn').classList.remove('hidden');
+    $('stopBtn').classList.add('hidden');
+  }
+
+  async function stopScan() {
+    if (scanner && scanning) {
+      scanning = false;
+      try { await scanner.stop(); } catch (e) {}
+    }
+    stopScanUI();
+  }
+
+  // ---------- ボタン ----------
+  $('startBtn').addEventListener('click', startScan);
+  $('stopBtn').addEventListener('click', stopScan);
+
+  function searchManual() {
+    const jan = $('janInput').value.replace(/\D/g, '');
+    if (!/^(\d{8}|\d{13})$/.test(jan)) { toast('8桁か13桁の数字を入れてください'); return; }
+    if (!isValidJan(jan)) {
+      if (!confirm('数字が正しくないかもしれません（チェック数字が合いません）。このまま検索しますか？')) return;
+    }
+    stopScan();
+    $('janInput').blur();
+    lookup(jan);
+  }
+  $('searchBtn').addEventListener('click', searchManual);
+  $('janInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') searchManual(); });
+
+  $('noJanBtn').addEventListener('click', () => {
+    stopScan();
+    openResult('');
+    current = { jan: '', name: '', source: 'manual', maker: '', quantity: '', nutrition: null };
+    setStatus('wait', '商品名を入力してください');
+    showProduct(current);
+    $('nameInput').focus();
+  });
+
+  $('qtyMinus').addEventListener('click', () => { $('qtyInput').value = Math.max(1, (parseInt($('qtyInput').value, 10) || 1) - 1); });
+  $('qtyPlus').addEventListener('click', () => { $('qtyInput').value = (parseInt($('qtyInput').value, 10) || 0) + 1; });
+  $('addBtn').addEventListener('click', addCurrent);
+  $('cancelBtn').addEventListener('click', closeResult);
+  $('copyBtn').addEventListener('click', copyText);
+
+  $('clearBtn').addEventListener('click', () => {
+    if (!cart.length) { toast('リストはもう空です'); return; }
+    if (confirm('買い物リストを空にしますか？\n（読み取った商品の履歴は残ります）')) {
+      cart = [];
+      save(KEY_CART, cart);
+      renderCart();
+      toast('リストを空にしました');
+    }
+  });
+
+  $('histClearBtn').addEventListener('click', () => {
+    if (confirm('保存した商品の履歴をすべて消しますか？')) {
+      products = {};
+      save(KEY_PRODUCTS, products);
+      renderHistory();
+      toast('履歴を消しました');
+    }
+  });
+
+  $('rakutenId').value = settings.rakutenId || '';
+  $('rakutenKey').value = settings.rakutenKey || '';
+  $('saveSettingsBtn').addEventListener('click', () => {
+    settings = { rakutenId: $('rakutenId').value.trim(), rakutenKey: $('rakutenKey').value.trim() };
+    save(KEY_SETTINGS, settings);
+    toast('保存しました');
+  });
+
+  // 画面を離れたらカメラを止める
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stopScan(); });
+
+  renderCart();
+  renderHistory();
+})();
+</script>
+</body>
+</html>
